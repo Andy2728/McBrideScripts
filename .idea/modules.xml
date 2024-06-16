@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/McBrideScrips.iml" filepath="$PROJECT_DIR$/.idea/McBrideScrips.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/OCR-Tools.iml" filepath="$PROJECT_DIR$/.idea/OCR-Tools.iml" />
     </modules>
   </component>
 </project>
