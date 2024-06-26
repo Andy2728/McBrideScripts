@@ -177,11 +177,12 @@ def parse_text(text):
                     unit_cost = parts[-2]
                     amount = parts[-1]
                     description = " ".join(parts[2:-2]) if len(parts) > 3 else " ".join(parts[1:-1])
+                    if "Freight" in description:
+                        description = description.strip()
+                    else:
+                        description = f"{material_number} - {description.strip()} x {qty}"
                     current_item = {
-                        "Qty": qty,
-                        "Material Number": material_number,
                         "Description": description,
-                        "Unit Cost": unit_cost,
                         "Amount": amount,
                         "Date": data["Date"],
                         "Invoice No.": data["Invoice No."],
@@ -202,13 +203,15 @@ def parse_text(text):
 
     return data
 
-
 # Function to save data to CSV
 def save_to_csv(data, output_path):
     items = data.pop("Items")
     df = pd.DataFrame(items)
     print(f"Data to be saved to CSV:\n{df}")
-    df.to_csv(output_path, index=False)
+    df.to_csv(output_path, index=False, columns=[
+        "Description", "Amount", "Date", "Invoice No.", "Customer PO", "Co./Last Name",
+        "CardID", "Addr 1 - Line 1", "Account No.", "Category"
+    ])
 
 # Main function to process all PDFs in the folder
 def process_invoices(input_folder, output_folder):
