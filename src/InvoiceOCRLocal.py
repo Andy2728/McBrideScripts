@@ -123,14 +123,14 @@ def extract_text_from_pdf(pdf_path):
 def parse_text(text):
     data = {
         "Date": "",
-        "Invoice No.": "",
+        "Invoice #": "",
         "Customer PO": "",
         "Co./Last Name": "",
         "CardID": "",
         "Addr 1 - Line 1": "",
-        "Addr 1 - Line 2": "",
-        "Addr 1 - Line 3": "",
-        "Addr 1 - Line 4": "",
+        "- Line 2": "",
+        "- Line 3": "",
+        "- Line 4": "",
         "Items": []
     }
 
@@ -159,7 +159,7 @@ def parse_text(text):
             except ValueError:
                 print(f"Invalid date format: {date_str}")
         elif "Invoice:" in line:
-            data["Invoice No."] = line.split(':')[-1].strip()
+            data["Invoice #"] = line.split(':')[-1].strip()
         elif "Purchase Order:" in line:
             data["Customer PO"] = line.split(':')[-1].strip()
         elif "Invoice to:" in line:
@@ -209,17 +209,17 @@ def parse_text(text):
                         "Amount": amount,
                         "Inc-Tax Amount": inc_tax_amount,
                         "Date": data["Date"],
-                        "Invoice No.": data["Invoice No."],
+                        "Invoice #": data["Invoice #"],
                         "Customer PO": data["Customer PO"],
                         "Co./Last Name": data["Co./Last Name"],
                         "CardID": data["CardID"],
                         "Addr 1 - Line 1": data["Addr 1 - Line 1"],
-                        "Addr 1 - Line 2": address_lines[0] if len(address_lines) > 0 else "",
-                        "Addr 1 - Line 3": address_lines[1] if len(address_lines) > 1 else "",
-                        "Addr 1 - Line 4": address_lines[2] if len(address_lines) > 2 else "",
-                        "Account No.": 43000,
+                        "- Line 2": address_lines[0] if len(address_lines) > 0 else "",
+                        "- Line 3": address_lines[1] if len(address_lines) > 1 else "",
+                        "- Line 4": address_lines[2] if len(address_lines) > 2 else "",
+                        "Account #": 43000,
                         "Category": "Yeronga",
-                        "Job": data["Invoice No."],
+                        "Job": data["Invoice #"],
                         "Tax Code": "GST"
                     }
                     data["Items"].append(current_item)
@@ -240,20 +240,20 @@ def save_to_csv_and_txt(data, output_csv_path, output_txt_path):
     # Save to CSV
     print(f"Data to be saved to CSV:\n{df}")
     df.to_csv(output_csv_path, index=False, columns=[
-        "Description", "Amount", "Inc-Tax Amount", "Date", "Invoice No.", "Customer PO", "Co./Last Name",
-        "CardID", "Addr 1 - Line 1", "Addr 1 - Line 2", "Addr 1 - Line 3", "Addr 1 - Line 4", "Account No.", "Category", "Job", "Tax Code"
+        "Description", "Amount", "Inc-Tax Amount", "Date", "Invoice #", "Customer PO", "Co./Last Name",
+        "CardID", "Addr 1 - Line 1", "- Line 2", "- Line 3", "- Line 4", "Account #", "Category", "Job", "Tax Code"
     ])
 
     # Save to TXT in tab-separated format with updated headers
     with open(output_txt_path, "w") as txt_file:
         # Write headers
         txt_file.write(
-            "Description\tAmount\tInc-Tax Amount\tDate\tInvoice #\tCustomer PO\tCo./Last Name\tCard ID\tAddr 1 - Line 1\tAddr 1 - Line 2\tAddr 1 - Line 3\tAddr 1 - Line 4\tAccount #\tCategory\tJob\tTax Code\n")
+            "Description\tAmount\tInc-Tax Amount\tDate\tInvoice #\tCustomer PO\tCo./Last Name\tCard ID\tAddr 1 - Line 1\t- Line 2\t- Line 3\t- Line 4\tAccount #\tCategory\tJob\tTax Code\n")
         # Write item data
         for item in items:
             txt_file.write(
-                f"{item['Description']}\t{item['Amount']:.2f}\t{item['Inc-Tax Amount']:.2f}\t{item['Date']}\t{item['Invoice No.']}\t{item['Customer PO']}\t"
-                f"{item['Co./Last Name']}\t{item['CardID']}\t{item['Addr 1 - Line 1']}\t{item['Addr 1 - Line 2']}\t{item['Addr 1 - Line 3']}\t{item['Addr 1 - Line 4']}\t{item['Account No.']}\t{item['Category']}\t{item['Job']}\t{item['Tax Code']}\n"
+                f"{item['Description']}\t{item['Amount']:.2f}\t{item['Inc-Tax Amount']:.2f}\t{item['Date']}\t{item['Invoice #']}\t{item['Customer PO']}\t"
+                f"{item['Co./Last Name']}\t{item['CardID']}\t{item['Addr 1 - Line 1']}\t{item['- Line 2']}\t{item['- Line 3']}\t{item['- Line 4']}\t{item['Account #']}\t{item['Category']}\t{item['Job']}\t{item['Tax Code']}\n"
             )
     print(f"Data saved to TXT in tab-separated format.")
 
