@@ -127,6 +127,9 @@ def parse_text(text):
         "Co./Last Name": "",
         "CardID": "",
         "Addr 1 - Line 1": "",
+        "Addr 1 - Line 2": "",
+        "Addr 1 - Line 3": "",
+        "Addr 1 - Line 4": "",
         "Items": []
     }
 
@@ -137,6 +140,7 @@ def parse_text(text):
     capture_items = False
     current_item = {}
     first_customer_matched = False
+    address_lines = []
 
     for i, line in enumerate(lines):
         print(f"Processing line: {line.strip()}")
@@ -158,8 +162,9 @@ def parse_text(text):
                         print(f"Captured first customer name: {data['Co./Last Name']}")
                     else:
                         data["Addr 1 - Line 1"] = customer
+                        address_lines = lines[i+1:i+4]
                         print(f"Captured second customer name: {data['Addr 1 - Line 1']}")
-                    line = line.replace(customer, "")  # Remove the matched customer from the line
+                        break
 
         if "Material Number" in line or "Material Nurnber" in line:  # account for OCR misreads
             capture_items = True
@@ -175,7 +180,9 @@ def parse_text(text):
                     qty = parts[0]
                     material_number = parts[1] if len(parts) > 3 else ""
                     unit_cost = parts[-2]
-                    amount = parts[-1]
+                    amount_str = parts[-1].replace(",", "").replace("$", "")  # Remove comma and dollar sign
+                    amount = float(amount_str)
+                    inc_tax_amount = amount
                     description = " ".join(parts[2:-2]) if len(parts) > 3 else " ".join(parts[1:-1])
                     if "Freight" in description:
                         description = description.strip()
@@ -184,14 +191,20 @@ def parse_text(text):
                     current_item = {
                         "Description": description,
                         "Amount": amount,
+                        "Inc-Tax Amount": inc_tax_amount,
                         "Date": data["Date"],
                         "Invoice No.": data["Invoice No."],
                         "Customer PO": data["Customer PO"],
                         "Co./Last Name": data["Co./Last Name"],
                         "CardID": data["CardID"],
                         "Addr 1 - Line 1": data["Addr 1 - Line 1"],
+                        "Addr 1 - Line 2": address_lines[0] if len(address_lines) > 0 else "",
+                        "Addr 1 - Line 3": address_lines[1] if len(address_lines) > 1 else "",
+                        "Addr 1 - Line 4": address_lines[2] if len(address_lines) > 2 else "",
                         "Account No.": 43000,
-                        "Category": "McBride"
+                        "Category": "McBride",
+                        "Job": data["Invoice No."],
+                        "Tax Code": "GST"
                     }
                     data["Items"].append(current_item)
                     print(f"Captured item: {current_item}")
@@ -203,17 +216,32 @@ def parse_text(text):
 
     return data
 
-# Function to save data to CSV
-def save_to_csv(data, output_path):
+# Function to save data to CSV and TXT
+def save_to_csv_and_txt(data, output_csv_path, output_txt_path):
     items = data.pop("Items")
     df = pd.DataFrame(items)
+
+    # Save to CSV
     print(f"Data to be saved to CSV:\n{df}")
-    df.to_csv(output_path, index=False, columns=[
-        "Description", "Amount", "Date", "Invoice No.", "Customer PO", "Co./Last Name",
-        "CardID", "Addr 1 - Line 1", "Account No.", "Category"
+    df.to_csv(output_csv_path, index=False, columns=[
+        "Description", "Amount", "Inc-Tax Amount", "Date", "Invoice No.", "Customer PO", "Co./Last Name",
+        "CardID", "Addr 1 - Line 1", "Addr 1 - Line 2", "Addr 1 - Line 3", "Addr 1 - Line 4", "Account No.", "Category", "Job", "Tax Code"
     ])
 
-# Main function to process all PDFs in the folder
+    # Save to TXT in tab-separated format with updated headers
+    with open(output_txt_path, "w") as txt_file:
+        # Write headers
+        txt_file.write(
+            "Description\tAmount\tInc-Tax Amount\tDate\tInvoice #\tCustomer PO\tCo./Last Name\tCard ID\tAddr 1 - Line 1\tAddr 1 - Line 2\tAddr 1 - Line 3\tAddr 1 - Line 4\tAccount #\tCategory\tJob\tTax Code\n")
+        # Write item data
+        for item in items:
+            txt_file.write(
+                f"{item['Description']}\t{item['Amount']:.2f}\t{item['Inc-Tax Amount']:.2f}\t{item['Date']}\t{item['Invoice No.']}\t{item['Customer PO']}\t"
+                f"{item['Co./Last Name']}\t{item['CardID']}\t{item['Addr 1 - Line 1']}\t{item['Addr 1 - Line 2']}\t{item['Addr 1 - Line 3']}\t{item['Addr 1 - Line 4']}\t{item['Account No.']}\t{item['Category']}\t{item['Job']}\t{item['Tax Code']}\n"
+            )
+    print(f"Data saved to TXT in tab-separated format.")
+
+# Function to process all PDFs in the folder
 def process_invoices(input_folder, output_folder):
     if not os.path.exists(input_folder):
         print(f"Input folder '{input_folder}' does not exist.")
@@ -228,7 +256,8 @@ def process_invoices(input_folder, output_folder):
             text = extract_text_from_pdf(pdf_path)
             data = parse_text(text)
             output_csv = os.path.join(output_folder, f"{os.path.splitext(filename)[0]}.csv")
-            save_to_csv(data, output_csv)
+            output_txt = os.path.join(output_folder, f"{os.path.splitext(filename)[0]}.txt")
+            save_to_csv_and_txt(data, output_csv, output_txt)
 
 # Paths to input and output folders
 if getattr(sys, 'frozen', False):
