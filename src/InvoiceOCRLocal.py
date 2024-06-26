@@ -19,6 +19,7 @@ print(f"Tesseract path: {pytesseract.pytesseract.tesseract_cmd}")
 
 # List of known customer names
 known_customers = [
+    "Asahi Lifestyle Beverages",
     "Asahi Beverages NSW",
     "Asahi Beverages QLD - Heathwood",
     "Asahi Beverages QLD - Trailways",
@@ -29,7 +30,6 @@ known_customers = [
     "Asahi Beverages TAS - New Town",
     "Asahi Beverages VIC",
     "Asahi Beverages VIC - Bulk",
-    "Asahi Lifestyle Beverages",
     "Asahi Beverages WA",
     "Asahi Beverages WA - Bulk",
     "ATLANTA REFRIGERATION SA",
@@ -163,6 +163,41 @@ def parse_text(text):
         elif "Purchase Order:" in line:
             data["Customer PO"] = line.split(':')[-1].strip()
         elif "Invoice to:" in line:
+            # Continue to next line to process customers
+            continue
+        elif "Ship to:" in line:
+            # Process the customers in the next line
+            next_line = lines[i + 1].strip()
+            words = next_line.split()
+            found_customers = []
+
+            # Build potential customer names from words
+            current_name = ""
+            for word in words:
+                if current_name:
+                    current_name += " "
+                current_name += word
+                if current_name in known_customers:
+                    found_customers.append(current_name)
+                    current_name = ""  # Reset for the next potential customer
+
+            # Ensure we have at least two customers
+            if len(found_customers) >= 2:
+                data["Co./Last Name"] = found_customers[0]
+                data["CardID"] = customer_card_ids.get(found_customers[0], "")
+                first_customer_matched = True
+                print(f"Captured first customer name: {data['Co./Last Name']}")
+
+                data["Addr 1 - Line 1"] = found_customers[1]
+                # Capture the address lines for the second customer
+                address_lines = lines[i + 2:i + 5]
+                if len(address_lines) > 0:
+                    data["- Line 2"] = address_lines[0]
+                if len(address_lines) > 1:
+                    data["- Line 3"] = address_lines[1]
+                if len(address_lines) > 2:
+                    data["- Line 4"] = address_lines[2]
+                print(f"Captured second customer name: {data['Addr 1 - Line 1']}")
             continue
         else:
             for customer in known_customers:
@@ -174,7 +209,14 @@ def parse_text(text):
                         print(f"Captured first customer name: {data['Co./Last Name']}")
                     else:
                         data["Addr 1 - Line 1"] = customer
-                        address_lines = lines[i+1:i+4]
+                        # Capture the address lines for the second customer
+                        address_lines = lines[i + 1:i + 4]
+                        if len(address_lines) > 0:
+                            data["- Line 2"] = address_lines[0]
+                        if len(address_lines) > 1:
+                            data["- Line 3"] = address_lines[1]
+                        if len(address_lines) > 2:
+                            data["- Line 4"] = address_lines[2]
                         print(f"Captured second customer name: {data['Addr 1 - Line 1']}")
                         break
 
@@ -231,6 +273,8 @@ def parse_text(text):
     print(data)
 
     return data
+
+
 
 # Function to save data to CSV and TXT
 def save_to_csv_and_txt(data, output_csv_path, output_txt_path):
