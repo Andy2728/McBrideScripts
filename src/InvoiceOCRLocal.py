@@ -8,7 +8,8 @@ import pandas as pd
 import sys
 
 # Set the Tesseract executable path
-script_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+script_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(
+    os.path.abspath(__file__))
 tesseract_cmd_path = os.path.join(script_dir, 'tesseract', 'tesseract.exe')
 pytesseract.pytesseract.tesseract_cmd = tesseract_cmd_path
 
@@ -17,15 +18,67 @@ print(f"Tesseract path: {pytesseract.pytesseract.tesseract_cmd}")
 
 # List of known customer names
 known_customers = [
-    "Kings Stones Music", "Variety Group", "SD DETAILING", "Pirate Life",
-    "Mackay North State High School", "MANAWARI PTY LTD", "Frozen Sunshine",
-    "Vendors Plus", "KINGLOC COMMERCIAL EQUIPMENT", "Coca-Cola Europacific Partners (EQS)",
-    "Asahi Lifestyle Beverages", "Cleanaway Co Pty Ltd", "JJR Engineering Pty Ltd",
-    "Sanden International", "Rud Chains", "Oxley Golf Club", "XL Metals",
-    "Sunstate Services", "PepsiCo Asia Pacific", "Tusker Roundabout",
-    "Big Wave Printing Pty Ltd", "Room 3W-245", "Cool Kundu",
-    "Unit 11, 7-15 Gundah Road"
+    "Asahi Beverages NSW",
+    "Asahi Beverages QLD - Heathwood",
+    "Asahi Beverages QLD - Trailways",
+    "Asahi Beverages SA",
+    "Asahi Beverages SA - AB Service",
+    "Asahi Beverages SA - Bulk",
+    "Asahi Beverages TAS - Invermay",
+    "Asahi Beverages TAS - New Town",
+    "Asahi Beverages VIC",
+    "Asahi Beverages VIC - Bulk",
+    "Asahi Lifestyle Beverages",
+    "Asahi Beverages WA",
+    "Asahi Beverages WA - Bulk",
+    "ATLANTA REFRIGERATION SA",
+    "BENDESIGNS NT",
+    "Frozen Sunshine",
+    "Hoshizaki Lancer",
+    "JJR Engineering Pty Ltd",
+    "KINGLOC NSW",
+    "Kingloc QLD",
+    "Kingloc TAS/RBR Refrigeration",
+    "KINGLOC VIC",
+    "PFM LOGISTICS VIC",
+    "PFM NT",
+    "PFM SA",
+    "Rud Chains",
+    "Wrapt Freight NSW",
+    "KINGLOC WA"
 ]
+
+# Dictionary mapping customer names to CardIDs
+customer_card_ids = {
+    "Asahi Beverages NSW": "ASAHINSW",
+    "Asahi Beverages QLD - Heathwood": "ASAHIQ-HW",
+    "Asahi Beverages QLD - Trailways": "ASAHIQLD-TRL",
+    "Asahi Beverages SA": "ASAHISA",
+    "Asahi Beverages SA - AB Service": "ASAHISA-AB",
+    "Asahi Beverages SA - Bulk": "ASAHISA-BLK",
+    "Asahi Beverages TAS - Invermay": "ASAHITAS-I",
+    "Asahi Beverages TAS - New Town": "ASAHITAS-NT",
+    "Asahi Beverages VIC": "ASAHI-VIC",
+    "Asahi Beverages VIC - Bulk": "ASAHIVIC-BLK",
+    "Asahi Lifestyle Beverages": "ASAHI",
+    "Asahi Beverages WA": "ASAHIWA",
+    "Asahi Beverages WA - Bulk": "ASAHIWA-BLK",
+    "ATLANTA REFRIGERATION SA": "ATLANTAFRDG",
+    "BENDESIGNS NT": "BENDESIGNS",
+    "Frozen Sunshine": "FROZENSUNSHINE",
+    "Hoshizaki Lancer": "HOSHIZAKIL",
+    "JJR Engineering Pty Ltd": "JJRENGINEERING",
+    "KINGLOC NSW": "KINGLOCNSW",
+    "Kingloc QLD": "KINGLOCQLD",
+    "Kingloc TAS/RBR Refrigeration": "KINGLOCTAS-R",
+    "KINGLOC VIC": "KINGLOC-VIC",
+    "PFM LOGISTICS VIC": "PFM-VIC-LGT",
+    "PFM NT": "PFM-NT",
+    "PFM SA": "PFM-SA",
+    "Rud Chains": "RUDCHAINS",
+    "Wrapt Freight NSW": "WRPTFREIGHT",
+    "KINGLOC WA": "KINGLOCWA"
+}
 
 # Function to preprocess image for better OCR results using OpenCV
 def preprocess_image(image):
@@ -72,6 +125,8 @@ def parse_text(text):
         "Invoice": "",
         "Purchase Order": "",
         "Customer Name": "",
+        "CardID": "",
+        "Addr 1 - Line 1": "",
         "Items": []
     }
 
@@ -80,6 +135,9 @@ def parse_text(text):
 
     lines = text.split('\n')
     capture_items = False
+    current_item = {}
+    first_customer_matched = False
+
     for i, line in enumerate(lines):
         if "Date:" in line:
             data["Date"] = line.split(':')[-1].strip()
@@ -88,40 +146,52 @@ def parse_text(text):
         elif "Purchase Order:" in line:
             data["Purchase Order"] = line.split(':')[-1].strip()
         elif "Invoice to:" in line:
-            # Check for known customer names in the following lines
             for customer in known_customers:
                 if customer in line or (i + 1 < len(lines) and customer in lines[i + 1]):
-                    data["Customer Name"] = customer
+                    if not first_customer_matched:
+                        data["Customer Name"] = customer
+                        data["CardID"] = customer_card_ids.get(customer, "")
+                        first_customer_matched = True
+                        print(f"Captured first customer name: {data['Customer Name']}")
+                    else:
+                        data["Addr 1 - Line 1"] = customer
+                        print(f"Captured second customer name: {data['Addr 1 - Line 1']}")
                     break
-            print(f"Captured customer name: {data['Customer Name']}")
         elif "Material Number" in line or "Material Nurnber" in line:  # account for OCR misreads
             capture_items = True
         elif capture_items:
             if "Direct deposit details:" in line:
                 capture_items = False
                 continue
-            if line.strip() and line.split()[0].isdigit():
+            if line.strip():
                 parts = line.split()
                 # Try to handle spacing issues by ensuring the correct number of parts
-                if len(parts) >= 5:
+                if len(parts) >= 2 and parts[0].isdigit():
                     qty = parts[0]
-                    material_number = parts[1]
+                    material_number = parts[1] if len(parts) > 3 else ""
                     unit_cost = parts[-2]
                     line_total = parts[-1]
-                    description = " ".join(parts[2:-2])
-                    item = {
+                    description = " ".join(parts[2:-2]) if len(parts) > 3 else " ".join(parts[1:-1])
+                    current_item = {
                         "Qty": qty,
                         "Material Number": material_number,
                         "Description": description,
                         "Unit Cost": unit_cost,
-                        "Line Total": line_total
+                        "Line Total": line_total,
+                        "Date": data["Date"],
+                        "Invoice": data["Invoice"],
+                        "Purchase Order": data["Purchase Order"],
+                        "Customer Name": data["Customer Name"],
+                        "CardID": data["CardID"],
+                        "Addr 1 - Line 1": data["Addr 1 - Line 1"],
+                        "Account No.": 43000,
+                        "Category": "McBride"
                     }
-                    item["Date"] = data["Date"]
-                    item["Invoice"] = data["Invoice"]
-                    item["Purchase Order"] = data["Purchase Order"]
-                    item["Customer Name"] = data["Customer Name"]
-                    data["Items"].append(item)
-                    print(f"Captured item: {item}")
+                    data["Items"].append(current_item)
+                    print(f"Captured item: {current_item}")
+                elif current_item:
+                    # If current_item exists but the line doesn't have a new item, it's part of the description
+                    current_item["Description"] += " " + line.strip()
 
     print("Parsed data:")
     print(data)
