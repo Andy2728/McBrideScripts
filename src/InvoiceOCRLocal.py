@@ -126,7 +126,7 @@ def parse_text(text):
         "Invoice #": "",
         "Customer PO": "",
         "Co./Last Name": "",
-        "CardID": "",
+        "Card ID": "",
         "Addr 1 - Line 1": "",
         "- Line 2": "",
         "- Line 3": "",
@@ -184,7 +184,7 @@ def parse_text(text):
             # Ensure we have at least two customers
             if len(found_customers) >= 2:
                 data["Co./Last Name"] = found_customers[0]
-                data["CardID"] = customer_card_ids.get(found_customers[0], "")
+                data["Card ID"] = customer_card_ids.get(found_customers[0], "")
                 first_customer_matched = True
                 print(f"Captured first customer name: {data['Co./Last Name']}")
 
@@ -204,7 +204,7 @@ def parse_text(text):
                 if customer in line:
                     if not first_customer_matched:
                         data["Co./Last Name"] = customer
-                        data["CardID"] = customer_card_ids.get(customer, "")
+                        data["Card ID"] = customer_card_ids.get(customer, "")
                         first_customer_matched = True
                         print(f"Captured first customer name: {data['Co./Last Name']}")
                     else:
@@ -254,7 +254,7 @@ def parse_text(text):
                         "Invoice #": data["Invoice #"],
                         "Customer PO": data["Customer PO"],
                         "Co./Last Name": data["Co./Last Name"],
-                        "CardID": data["CardID"],
+                        "Card ID": data["Card ID"],
                         "Addr 1 - Line 1": data["Addr 1 - Line 1"],
                         "- Line 2": address_lines[0] if len(address_lines) > 0 else "",
                         "- Line 3": address_lines[1] if len(address_lines) > 1 else "",
@@ -274,8 +274,6 @@ def parse_text(text):
 
     return data
 
-
-
 # Function to save data to CSV and TXT
 def save_to_csv_and_txt(data, output_csv_path, output_txt_path):
     items = data.pop("Items")
@@ -285,7 +283,7 @@ def save_to_csv_and_txt(data, output_csv_path, output_txt_path):
     print(f"Data to be saved to CSV:\n{df}")
     df.to_csv(output_csv_path, index=False, columns=[
         "Description", "Amount", "Inc-Tax Amount", "Date", "Invoice #", "Customer PO", "Co./Last Name",
-        "CardID", "Addr 1 - Line 1", "- Line 2", "- Line 3", "- Line 4", "Account #", "Category", "Job", "Tax Code"
+        "Card ID", "Addr 1 - Line 1", "- Line 2", "- Line 3", "- Line 4", "Account #", "Category", "Job", "Tax Code"
     ])
 
     # Save to TXT in tab-separated format with updated headers
@@ -297,7 +295,7 @@ def save_to_csv_and_txt(data, output_csv_path, output_txt_path):
         for item in items:
             txt_file.write(
                 f"{item['Description']}\t{item['Amount']:.2f}\t{item['Inc-Tax Amount']:.2f}\t{item['Date']}\t{item['Invoice #']}\t{item['Customer PO']}\t"
-                f"{item['Co./Last Name']}\t{item['CardID']}\t{item['Addr 1 - Line 1']}\t{item['- Line 2']}\t{item['- Line 3']}\t{item['- Line 4']}\t{item['Account #']}\t{item['Category']}\t{item['Job']}\t{item['Tax Code']}\n"
+                f"{item['Co./Last Name']}\t{item['Card ID']}\t{item['Addr 1 - Line 1']}\t{item['- Line 2']}\t{item['- Line 3']}\t{item['- Line 4']}\t{item['Account #']}\t{item['Category']}\t{item['Job']}\t{item['Tax Code']}\n"
             )
     print(f"Data saved to TXT in tab-separated format.")
 
