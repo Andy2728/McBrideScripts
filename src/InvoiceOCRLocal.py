@@ -122,9 +122,9 @@ def extract_text_from_pdf(pdf_path):
 def parse_text(text):
     data = {
         "Date": "",
-        "Invoice": "",
-        "Purchase Order": "",
-        "Customer Name": "",
+        "Invoice No.": "",
+        "Customer PO": "",
+        "Co./Last Name": "",
         "CardID": "",
         "Addr 1 - Line 1": "",
         "Items": []
@@ -139,49 +139,54 @@ def parse_text(text):
     first_customer_matched = False
 
     for i, line in enumerate(lines):
+        print(f"Processing line: {line.strip()}")
         if "Date:" in line:
             data["Date"] = line.split(':')[-1].strip()
         elif "Invoice:" in line:
-            data["Invoice"] = line.split(':')[-1].strip()
+            data["Invoice No."] = line.split(':')[-1].strip()
         elif "Purchase Order:" in line:
-            data["Purchase Order"] = line.split(':')[-1].strip()
+            data["Customer PO"] = line.split(':')[-1].strip()
         elif "Invoice to:" in line:
+            continue
+        else:
             for customer in known_customers:
-                if customer in line or (i + 1 < len(lines) and customer in lines[i + 1]):
+                if customer in line:
                     if not first_customer_matched:
-                        data["Customer Name"] = customer
+                        data["Co./Last Name"] = customer
                         data["CardID"] = customer_card_ids.get(customer, "")
                         first_customer_matched = True
-                        print(f"Captured first customer name: {data['Customer Name']}")
+                        print(f"Captured first customer name: {data['Co./Last Name']}")
                     else:
                         data["Addr 1 - Line 1"] = customer
                         print(f"Captured second customer name: {data['Addr 1 - Line 1']}")
-                    break
-        elif "Material Number" in line or "Material Nurnber" in line:  # account for OCR misreads
+                    line = line.replace(customer, "")  # Remove the matched customer from the line
+
+        if "Material Number" in line or "Material Nurnber" in line:  # account for OCR misreads
             capture_items = True
+            print(f"Starting to capture items...")
         elif capture_items:
             if "Direct deposit details:" in line:
                 capture_items = False
+                print(f"Stopped capturing items.")
                 continue
             if line.strip():
                 parts = line.split()
-                # Try to handle spacing issues by ensuring the correct number of parts
                 if len(parts) >= 2 and parts[0].isdigit():
                     qty = parts[0]
                     material_number = parts[1] if len(parts) > 3 else ""
                     unit_cost = parts[-2]
-                    line_total = parts[-1]
+                    amount = parts[-1]
                     description = " ".join(parts[2:-2]) if len(parts) > 3 else " ".join(parts[1:-1])
                     current_item = {
                         "Qty": qty,
                         "Material Number": material_number,
                         "Description": description,
                         "Unit Cost": unit_cost,
-                        "Line Total": line_total,
+                        "Amount": amount,
                         "Date": data["Date"],
-                        "Invoice": data["Invoice"],
-                        "Purchase Order": data["Purchase Order"],
-                        "Customer Name": data["Customer Name"],
+                        "Invoice No.": data["Invoice No."],
+                        "Customer PO": data["Customer PO"],
+                        "Co./Last Name": data["Co./Last Name"],
                         "CardID": data["CardID"],
                         "Addr 1 - Line 1": data["Addr 1 - Line 1"],
                         "Account No.": 43000,
@@ -190,13 +195,13 @@ def parse_text(text):
                     data["Items"].append(current_item)
                     print(f"Captured item: {current_item}")
                 elif current_item:
-                    # If current_item exists but the line doesn't have a new item, it's part of the description
                     current_item["Description"] += " " + line.strip()
 
     print("Parsed data:")
     print(data)
 
     return data
+
 
 # Function to save data to CSV
 def save_to_csv(data, output_path):
