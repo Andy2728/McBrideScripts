@@ -1,4 +1,4 @@
-import fitz  # PyMuPDF
+import fitz
 import pytesseract
 import os
 from PIL import Image
@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import sys
+from datetime import datetime
 
 # Set the Tesseract executable path
 script_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(
@@ -145,7 +146,18 @@ def parse_text(text):
     for i, line in enumerate(lines):
         print(f"Processing line: {line.strip()}")
         if "Date:" in line:
-            data["Date"] = line.split(':')[-1].strip()
+            date_str = line.split(':')[-1].strip()
+            data["Date"] = date_str
+
+            # Check if the date is within the current month
+            try:
+                invoice_date = datetime.strptime(date_str, "%d/%m/%Y")
+                current_date = datetime.now()
+                if invoice_date.month != current_date.month or invoice_date.year != current_date.year:
+                    data["Date"] = current_date.replace(day=1).strftime("%d/%m/%Y")
+                    print(f"Updated date to the first day of the current month: {data['Date']}")
+            except ValueError:
+                print(f"Invalid date format: {date_str}")
         elif "Invoice:" in line:
             data["Invoice No."] = line.split(':')[-1].strip()
         elif "Purchase Order:" in line:
@@ -176,12 +188,16 @@ def parse_text(text):
                 continue
             if line.strip():
                 parts = line.split()
-                if len(parts) >= 2 and parts[0].isdigit():
+                if len(parts) >= 2 and parts[0].isdigit() and parts[-1].replace(",", "").replace("$", "").replace(".", "").isdigit():
                     qty = parts[0]
                     material_number = parts[1] if len(parts) > 3 else ""
                     unit_cost = parts[-2]
                     amount_str = parts[-1].replace(",", "").replace("$", "")  # Remove comma and dollar sign
-                    amount = float(amount_str)
+                    try:
+                        amount = float(amount_str)
+                    except ValueError:
+                        print(f"Skipping invalid item line: {line.strip()}")
+                        continue
                     inc_tax_amount = amount
                     description = " ".join(parts[2:-2]) if len(parts) > 3 else " ".join(parts[1:-1])
                     if "Freight" in description:
@@ -202,7 +218,7 @@ def parse_text(text):
                         "Addr 1 - Line 3": address_lines[1] if len(address_lines) > 1 else "",
                         "Addr 1 - Line 4": address_lines[2] if len(address_lines) > 2 else "",
                         "Account No.": 43000,
-                        "Category": "McBride",
+                        "Category": "Yeronga",
                         "Job": data["Invoice No."],
                         "Tax Code": "GST"
                     }
