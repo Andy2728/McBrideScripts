@@ -9,8 +9,7 @@ import sys
 from datetime import datetime
 
 # Set the Tesseract executable path
-script_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(
-    os.path.abspath(__file__))
+script_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
 tesseract_cmd_path = os.path.join(script_dir, 'tesseract', 'tesseract.exe')
 pytesseract.pytesseract.tesseract_cmd = tesseract_cmd_path
 
@@ -46,7 +45,10 @@ known_customers = [
     "PFM SA",
     "Rud Chains",
     "Wrapt Freight NSW",
-    "KINGLOC WA"
+    "KINGLOC WA",
+    "ZONCA REFRIGERATION",
+    "PICCOLO ME HORSLEY PARK",
+    "TCN VENDING AUSTRALIA"
 ]
 
 # Dictionary mapping customer names to CardIDs
@@ -78,7 +80,10 @@ customer_card_ids = {
     "PFM SA": "PFM-SA",
     "Rud Chains": "RUDCHAINS",
     "Wrapt Freight NSW": "WRPTFREIGHT",
-    "KINGLOC WA": "KINGLOCWA"
+    "KINGLOC WA": "KINGLOCWA",
+    "ZONCA REFRIGERATION": "ZONCAFRIDGE",
+    "PICCOLO ME HORSLEY PARK": "PICCOLOMHP",
+    "TCN VENDING AUSTRALIA": "TCNVENDAUS"
 }
 
 # Function to preprocess image for better OCR results using OpenCV
@@ -190,14 +195,19 @@ def parse_text(text):
 
                 data["Addr 1 - Line 1"] = found_customers[1]
                 # Capture the address lines for the second customer
-                address_lines = lines[i + 2:i + 5]
+                address_lines = []
+                for j in range(i + 2, len(lines)):
+                    if "QTY" in lines[j] and "Material Number" in lines[j]:
+                        break
+                    if lines[j].strip():  # Exclude empty lines
+                        address_lines.append(lines[j].strip())
                 if len(address_lines) > 0:
                     data["- Line 2"] = address_lines[0]
                 if len(address_lines) > 1:
                     data["- Line 3"] = address_lines[1]
                 if len(address_lines) > 2:
                     data["- Line 4"] = address_lines[2]
-                print(f"Captured second customer name: {data['Addr 1 - Line 1']}")
+                print(f"Captured second customer name and address: {data['Addr 1 - Line 1']}, {address_lines}")
             continue
         else:
             for customer in known_customers:
@@ -210,14 +220,19 @@ def parse_text(text):
                     else:
                         data["Addr 1 - Line 1"] = customer
                         # Capture the address lines for the second customer
-                        address_lines = lines[i + 1:i + 4]
+                        address_lines = []
+                        for j in range(i + 1, len(lines)):
+                            if "QTY" in lines[j] and "Material Number" in lines[j]:
+                                break
+                            if lines[j].strip():  # Exclude empty lines
+                                address_lines.append(lines[j].strip())
                         if len(address_lines) > 0:
                             data["- Line 2"] = address_lines[0]
                         if len(address_lines) > 1:
                             data["- Line 3"] = address_lines[1]
                         if len(address_lines) > 2:
                             data["- Line 4"] = address_lines[2]
-                        print(f"Captured second customer name: {data['Addr 1 - Line 1']}")
+                        print(f"Captured second customer name and address: {data['Addr 1 - Line 1']}, {address_lines}")
                         break
 
         if "Material Number" in line or "Material Nurnber" in line:  # account for OCR misreads
